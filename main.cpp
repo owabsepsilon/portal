@@ -17,6 +17,40 @@
 #include <termcap.h>
 #include <fstream>
 #include <openssl/sha.h>
+#include <chrono>
+#include <thread>
+
+void playLoadingAnimation(int durationInSeconds) {
+    int animationLength = 4;
+    int iterationCount = durationInSeconds * 10;  // Assuming each iteration lasts 100 milliseconds
+    
+    for (int i = 0; i < iterationCount; ++i) {
+        std::string animationFrame;
+        
+        switch (i % animationLength) {
+            case 0:
+                animationFrame = "|";
+                break;
+            case 1:
+                animationFrame = "\\";
+                break;
+            case 2:
+                animationFrame = "/";
+                break;
+            case 3:
+                animationFrame = "-";
+                break;
+        }
+        
+        std::cout << "Loading " << animationFrame << " ";
+        std::cout.flush();
+        
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));  // Delay between frames
+        std::cout << "\r";  // Move the cursor back to the start of the line
+    }
+    
+    system("clear");
+}
 
 bool compareSHA512Hash(const std::string& password, const std::string& savedHash) {
     unsigned char hashed[SHA512_DIGEST_LENGTH];
@@ -459,6 +493,7 @@ void runShell(bool allowExternalCommands) {
         // bool allowExternalCommands = false; // Set this to true to allow external command execution
         // runShell(allowExternalCommands);
         system("clear");
+        playLoadingAnimation(3);
         std::cout << asciiArt;
         return 0;
       }
