@@ -16,12 +16,30 @@
 #include <iomanip> // Include this header for setw()
 #include <termcap.h>
 #include <fstream>
+#include <openssl/sha.h>
+
+bool compareSHA512Hash(const std::string& password, const std::string& savedHash) {
+    unsigned char hashed[SHA512_DIGEST_LENGTH];
+    SHA512_CTX sha512;
+
+    SHA512_Init(&sha512);
+    SHA512_Update(&sha512, password.c_str(), password.size());
+    SHA512_Final(hashed, &sha512);
+
+    char hashedHex[SHA512_DIGEST_LENGTH * 2 + 1];
+    for (int i = 0; i < SHA512_DIGEST_LENGTH; ++i) {
+        sprintf(&hashedHex[i * 2], "%02x", hashed[i]);
+    }
+
+    return savedHash == hashedHex;
+}
 
 bool hasANSISupport() {
   const char* term = getenv("TERM");
   if (term == nullptr) {
     return false;
   }
+
 
   char tbuffer[2048];
   if (tgetent(tbuffer, term) != 1) {
@@ -412,7 +430,11 @@ void runShell(bool allowExternalCommands) {
       }
 
       int main() {
-        bool allowExternalCommands = false; // Set this to true to allow external command execution
-        runShell(allowExternalCommands);
+		std::string savedHash = "";
+		std::string username;
+		std::string password;
+		
+        // bool allowExternalCommands = false; // Set this to true to allow external command execution
+        // runShell(allowExternalCommands);
         return 0;
       }
