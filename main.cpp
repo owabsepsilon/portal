@@ -15,6 +15,7 @@
 #include <sys/stat.h> // Include this header for file status information
 #include <iomanip> // Include this header for setw()
 #include <termcap.h>
+#include <fstream>
 
 bool hasANSISupport() {
   const char* term = getenv("TERM");
@@ -30,10 +31,93 @@ bool hasANSISupport() {
   return true;
 }
 
+bool isDirectoryEmpty(const std::string& path) {
+  DIR* dir = opendir(path.c_str());
+  if (dir) {
+    struct dirent* entry;
+    int count = 0;
+    while ((entry = readdir(dir)) != nullptr) {
+      if (std::string(entry->d_name) == "." || std::string(entry->d_name) == "..") {
+        continue;
+      }
+      ++count;
+    }
+    closedir(dir);
+    return count == 0;
+  } else {
+    perror(("opendir: " + path).c_str());
+    return false;
+  }
+}
 
 bool isSafeInput(const std::string& input) {
   // Allow empty input or use a regular expression to check for alphanumeric characters and spaces only
   return input.empty() || std::regex_match(input, std::regex("^[a-zA-Z0-9 \\-_<>()\"'/]*$"));
+}
+
+void touchFile(const std::string& path) {
+  std::ofstream file(path);
+  if (!file) {
+    perror(("touch: " + path).c_str());
+  }
+}
+
+
+void makeDirectory(const std::string& path) {
+  if (mkdir(path.c_str(), S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH) != 0) {
+    perror(("mkdir: " + path).c_str());
+  }
+}
+
+void removeFile(const std::string& path) {
+  if (remove(path.c_str()) != 0) {
+    perror(("rm: " + path).c_str());
+  }
+}
+
+void removeDirectory(const std::string& path) {
+  DIR* dir = opendir(path.c_str());
+  if (dir) {
+    struct dirent* entry;
+    while ((entry = readdir(dir)) != nullptr) {
+      if (std::string(entry->d_name) == "." || std::string(entry->d_name) == "..") {
+        continue;
+      }
+      std::string subPath = path + "/" + entry->d_name;
+      struct stat fileStat;
+      if (stat(subPath.c_str(), &fileStat) == 0) {
+        if (S_ISDIR(fileStat.st_mode)) {
+          removeDirectory(subPath);
+        } else {
+          removeFile(subPath);
+        }
+      }
+    }
+    closedir(dir);
+
+    if (rmdir(path.c_str()) != 0) {
+      perror(("rmdir: " + path).c_str());
+    }
+  } else {
+    perror(("opendir: " + path).c_str());
+  }
+}
+
+void copyFile(const std::string& source, const std::string& destination) {
+  std::ifstream srcFile(source, std::ios::binary);
+  std::ofstream dstFile(destination, std::ios::binary);
+
+  if (!srcFile) {
+    perror(("cp: " + source).c_str());
+    return;
+  }
+
+  if (!dstFile) {
+    perror(("cp: " + destination).c_str());
+    return;
+  }
+
+  dstFile << srcFile.rdbuf();
 }
 
 void listDirectory(const std::string& path, bool longFormat, bool showHidden) {
@@ -96,6 +180,7 @@ void listDirectory(const std::string& path, bool longFormat, bool showHidden) {
   }
 }
 
+// current built in commands = ls,pwd,cd,rm,mkdir,touch,cp
 
 void runShell(bool allowExternalCommands) {
   using_history();
@@ -135,6 +220,8 @@ void runShell(bool allowExternalCommands) {
         continue;
       }
 
+
+
       if (args[0] == "ls") {
         bool longFormat = false;
         bool showHidden = false;
@@ -160,6 +247,91 @@ void runShell(bool allowExternalCommands) {
         std::cout << std::endl;
         continue;
       }
+
+      if (args[0] == "cp") {
+        if (args.size() < 3) {
+          std::cerr << "cp: missing operand\n";
+        } else {
+          std::string source = args[1];
+          std::string destination = args.back();
+
+          copyFile(source, destination);
+        }
+        continue;
+      }
+
+      if (args[0] == "touch") {
+        if (args.size() < 2) {
+          std::cerr << "touch: missing file operand\n";
+        } else {
+          for (size_t i = 1; i < args.size(); ++i) {
+            touchFile(args[i]);
+          }
+        }
+        continue;
+      }
+
+      if (args[0] == "mkdir") {
+        if (args.size() < 2) {
+          std::cerr << "mkdir: missing operand\n";
+        } else {
+          for (size_t i = 1; i < args.size(); ++i) {
+            if (mkdir(args[i].c_str(), S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH) != 0) {
+              perror(("mkdir: " + args[i]).c_str());
+            }
+          }
+        }
+        continue;
+      }
+
+      if (args[0] == "rm") {
+        bool recursive = false;
+        bool force = false;
+        std::vector<std::string> targets;
+
+        if (args.size() < 2) {
+          std::cerr << "rm: missing operand\n";
+          return;
+        }
+
+        for (size_t i = 1; i < args.size(); ++i) {
+          if (args[i] == "-r") {
+            recursive = true;
+          } else if (args[i] == "-f") {
+            force = true;
+          } else {
+            targets.push_back(args[i]);
+          }
+        }
+
+        if (targets.empty()) {
+          std::cerr << "rm: missing operand\n";
+          return;
+        }
+
+        for (const std::string& target : targets) {
+          struct stat fileStat;
+          if (stat(target.c_str(), &fileStat) == 0) {
+            if (S_ISDIR(fileStat.st_mode) && recursive) {
+              if (isDirectoryEmpty(target)) {
+                removeDirectory(target);
+              } else {
+                std::cerr << "rm: cannot remove '" << target << "': Directory not empty" << std::endl;
+              }
+            } else if (!S_ISDIR(fileStat.st_mode)) {
+              removeFile(target);
+            } else {
+              std::cerr << "rm: cannot remove '" << target << "': Is a directory (use -r to remove)" << std::endl;
+            }
+          } else {
+            if (!force) {
+              perror(("rm: " + target).c_str());
+            }
+          }
+        }
+        continue;
+      }
+
 
       if (args[0] == "ansistatus") {
         if (hasANSISupport()) {
