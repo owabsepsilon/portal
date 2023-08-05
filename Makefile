@@ -1,6 +1,6 @@
 CC = g++
 CFLAGS = -g
-LDFLAGS = -lreadline
+LDFLAGS = -lreadline -lncurses
 SOURCES = main.cpp
 EXECUTABLE = shell
 

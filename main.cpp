@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cstdlib>
+#include <cstdio>
 #include <vector>
 #include <string>
 #include <cstring>
@@ -10,11 +11,91 @@
 #include <wordexp.h>
 #include <cerrno>
 #include <regex>
+#include <dirent.h>
+#include <sys/stat.h> // Include this header for file status information
+#include <iomanip> // Include this header for setw()
+#include <termcap.h>
+
+bool hasANSISupport() {
+  const char* term = getenv("TERM");
+  if (term == nullptr) {
+    return false;
+  }
+
+  char tbuffer[2048];
+  if (tgetent(tbuffer, term) != 1) {
+    return false;
+  }
+
+  return true;
+}
+
 
 bool isSafeInput(const std::string& input) {
   // Allow empty input or use a regular expression to check for alphanumeric characters and spaces only
   return input.empty() || std::regex_match(input, std::regex("^[a-zA-Z0-9 \\-_<>()\"'/]*$"));
 }
+
+void listDirectory(const std::string& path, bool longFormat, bool showHidden) {
+  DIR* dir = opendir(path.c_str());
+  if (dir) {
+    struct dirent* entry;
+    std::vector<std::string> entries;
+
+    while ((entry = readdir(dir)) != nullptr) {
+      if (!showHidden && entry->d_name[0] == '.') {
+        continue; // Skip hidden files if not showing hidden
+      }
+      entries.push_back(entry->d_name);
+    }
+    closedir(dir);
+
+    if (!longFormat) {
+      size_t maxEntryWidth = 0;
+      for (const auto& entryName : entries) {
+        maxEntryWidth = std::max(maxEntryWidth, entryName.length());
+      }
+
+      const int columns = 80 / (maxEntryWidth + 2); // Adjust the number of columns based on your terminal width
+
+      for (size_t i = 0; i < entries.size(); ++i) {
+        const std::string& entryName = entries[i];
+        struct stat fileStat;
+        if (stat((path + "/" + entryName).c_str(), &fileStat) == 0) {
+          if (S_ISDIR(fileStat.st_mode)) {
+            // If the entry is a directory, print it in blue
+            std::cout << "\033[1;34m" << std::setw(maxEntryWidth) << std::left << entryName << "\033[0m";
+          } else {
+            std::cout << std::setw(maxEntryWidth) << std::left << entryName;
+          }
+
+          if ((i + 1) % columns == 0 || i == entries.size() - 1) {
+            std::cout << std::endl;
+          } else {
+            std::cout << "  ";
+          }
+        }
+      }
+    } else {
+      for (const auto& entryName : entries) {
+        struct stat fileStat;
+        if (stat((path + "/" + entryName).c_str(), &fileStat) == 0) {
+          if (S_ISDIR(fileStat.st_mode)) {
+            // If the entry is a directory, print it in blue
+            std::cout << "\033[1;34m" << entryName << "\033[0m";
+          } else {
+            std::cout << entryName;
+          }
+
+          std::cout << " (" << fileStat.st_size << " bytes)" << std::endl;
+        }
+      }
+    }
+  } else {
+    perror("ls");
+  }
+}
+
 
 void runShell(bool allowExternalCommands) {
   using_history();
@@ -54,6 +135,24 @@ void runShell(bool allowExternalCommands) {
         continue;
       }
 
+      if (args[0] == "ls") {
+        bool longFormat = false;
+        bool showHidden = false;
+        for (size_t i = 1; i < args.size(); ++i) {
+          if (args[i] == "-l") {
+            longFormat = true;
+          } else if (args[i] == "-a") {
+            showHidden = true;
+          }
+        }
+        if (args.size() > 1 && args[1][0] != '-') {
+          listDirectory(args[1], longFormat, showHidden);
+        } else {
+          listDirectory(".", longFormat, showHidden);
+        }
+        continue;
+      }
+
       if (args[0] == "echo") {
         for (size_t i = 1; i < args.size(); ++i) {
           std::cout << args[i] << " ";
@@ -61,6 +160,23 @@ void runShell(bool allowExternalCommands) {
         std::cout << std::endl;
         continue;
       }
+
+      if (args[0] == "ansistatus") {
+        if (hasANSISupport()) {
+          std::cout << "ANSI ENABLED" << std::endl;
+        } else {
+          std::cout << "ANSI DISABLED" << std::endl;
+        }
+        continue;
+      }
+
+
+      if (args[0] == "clear") {
+        // Clear the terminal
+        std::cout << "\033[2J\033[H";
+        continue;
+      }
+
 
       if (args[0] == "cd") {
         if (args.size() > 1) {
