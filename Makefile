@@ -2,7 +2,7 @@ CC = g++
 CFLAGS = -g
 LDFLAGS = -lreadline
 SOURCES = main.cpp
-EXECUTABLE = portal
+EXECUTABLE = shell
 
 $(EXECUTABLE): $(SOURCES)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
