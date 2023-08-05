@@ -187,7 +187,7 @@ void runShell(bool allowExternalCommands) {
 
   std::string input;
   char* raw_input;
-  while ((raw_input = readline("PORTAL> ")) != nullptr) {
+  while ((raw_input = readline("as6> ")) != nullptr) {
     input = raw_input;
     free(raw_input);
 
