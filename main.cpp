@@ -433,8 +433,32 @@ void runShell(bool allowExternalCommands) {
 		std::string savedHash = "";
 		std::string username;
 		std::string password;
+
+		    std::string asciiArt =
+        "              .,-:;//;:=,\n"
+        "          . :H@@@MM@M#H/.,+%;,\n"
+        "       ,/X+ +M@@M@MM%=,-%HMMM@X/,\n"
+        "     -+@MM; $M@@MH+-,;XMMMM@MMMM@+-\n"
+        "    ;@M@@M- XM@X;. -+XXXXXHHH@M@M#@/.\n"
+        "  ,%MM@@MH ,@%=             .---=-=:=,.\n"
+        "  =@#@@@MX.,                -%HX$$%%%:;\n"
+        " =-./@M@M$                   .;@MMMM@MM:\n"
+        " X@/ -$MM/                    . +MM@@@M$\n"
+        ",@M@H: :@:                    . =X#@@@@-               APERTURE LABORATORIES\n"
+        ",@@@MMX, .                    /H- ;@M@M=                    ESCaDOS v1.2\n"
+        ".H@@@@M@+,                    %MM+..%#$. \n"
+        " /MMMM@MMH/.                  XM@MH; =;\n"
+        "  /%+%$XHH@$=              , .H@@@@MX,\n"
+        "   .=--------.           -%H.,@@@@@MX,\n"
+        "   .%MM@@@HHHXX$$$%+- .:$MMX =M@@MM%.\n"
+        "     =XMMM@MM@MM#H;,-+HMM@M+ /MMMX=\n"
+        "       =%@M@M#@$-.=$@MM@@@M; %M%=\n"
+        "         ,:+$+-,/H#MMMMMMM@= =,\n"
+        "               =++%%%%+/-.\n";
 		
         // bool allowExternalCommands = false; // Set this to true to allow external command execution
         // runShell(allowExternalCommands);
+        system("clear");
+        std::cout << asciiArt;
         return 0;
       }
