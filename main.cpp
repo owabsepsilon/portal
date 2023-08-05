@@ -13,7 +13,7 @@
 
 bool isSafeInput(const std::string& input) {
     // Allow empty input or use a regular expression to check for alphanumeric characters and spaces only
-    return input.empty() || std::regex_match(input, std::regex("^[a-zA-Z0-9 ]{1,100}$"));
+    return input.empty() || std::regex_match(input, std::regex("^[a-zA-Z0-9 \\-_<>()\"'/]*$"));
 }
 
 void runShell(bool allowExternalCommands) {
