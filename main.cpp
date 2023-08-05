@@ -52,7 +52,7 @@ bool isDirectoryEmpty(const std::string& path) {
 
 bool isSafeInput(const std::string& input) {
   // Allow empty input or use a regular expression to check for alphanumeric characters and spaces only
-  return input.empty() || std::regex_match(input, std::regex("^[a-zA-Z0-9 \\-_<>()\"'/]*$"));
+  return input.empty() || std::regex_match(input, std::regex("^[a-zA-Z0-9 \\-_<>()\"'/\\.]*$"));
 }
 
 void touchFile(const std::string& path) {
@@ -407,12 +407,12 @@ void runShell(bool allowExternalCommands) {
       } else {
         std::cerr << "Command not found." << std::endl;
       }
-    }
-  }
-  }
+      }
+      }
+      }
 
-  int main() {
-    bool allowExternalCommands = false; // Set this to true to allow external command execution
-    runShell(allowExternalCommands);
-    return 0;
-  }
+      int main() {
+        bool allowExternalCommands = false; // Set this to true to allow external command execution
+        runShell(allowExternalCommands);
+        return 0;
+      }
